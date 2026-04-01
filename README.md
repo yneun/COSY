@@ -1,130 +1,97 @@
-# COSY 
+# 🧠 COSY - AI 규제 적합성 판단 어시스턴트
 
-## fastapi를 로컬에서 돌리기 위한 환경 세팅
-1. Python 3.10.x 설치
-- 그 이상은 paddle ocr이 안됨
-- 기존 버전이 3.10.x 이상이면 삭제할 필요 없이 추가로 3.10.x 버전 다운로드
-- 이후 py -3.10 --version으로 버전 체크하고 다음 스텝으로 넘어가기
-2. fastapi 디렉토리에서 cmd 열기
-3. py -3.10 -m venv .venv → 가상환경 생성
-4. .venv\Scripts\activate → 가상환경 실행. 실행 후 프롬프트에 (.venv)가 붙었으면 성공적으로 가상환경에 접속한 것
-5. python -m pip install --upgrade pip
-6. pip install -r requirements.txt
-- 상당히 오래 걸림
-7. python -m app.scripts.ingest_regulations → 해야 rag에 쓰일 벡터db 생성됨
-8. uvicorn app.main:app --host 127.0.0.1 --port 8000
-9. 인터넷 주소창에 http://127.0.0.1:8000/docs으로 접속하면 api 확인 가능
-10. .env는 gitignore에 명시된 파일로 직접 생성 → 필요 시 담당자에게 문의해주세요
+RAG(Retrieval-Augmented Generation) 기반으로 사용자 입력을 분석하고,
+국가별 규제 데이터를 바탕으로 적합성을 판단하는 AI 어시스턴트입니다.
 
 ---
-## redis를 로컬에 돌리기 위한 환경 세팅 (Docker 사용)
 
-### 1. 사전 준비 사항
+## 👤 My Role
 
-#### Docker 설치 확인
+- Spring Boot 기반 백엔드 API 설계 및 구현
+- MySQL 데이터베이스 설계 및 연동
+- API–DB 간 데이터 처리 로직 구현
+- 서비스 기능 구현 및 데이터 흐름 관리
 
-Redis는 Docker 컨테이너로 실행합니다.  
-먼저 Docker가 설치되어 있는지 확인해주세요.  
-  
-터미널(명령 프롬프트)에서 아래 명령어를 실행합니다.  
+(본 프로젝트는 팀 프로젝트로 진행되었으며, 본 레포는 개인 포트폴리오 용도로 재구성한 것입니다.)
+
+---
+
+## 🚀 주요 기능
+
+* 사용자 입력 기반 규제 적합성 판단
+* Vector DB 기반 의미적 유사도 검색
+* 금지 키워드 필터링을 통한 보안 및 성능 개선
+* Redis 기반 캐싱 구조 적용 (팀 협업)
+
+---
+
+## 🧠 Architecture
+
+User → Spring Boot API → MySQL  
+                      ↘ FastAPI (RAG 서버) → Vector DB → LLM
+
+---
+
+## ⚙️ Tech Stack
+
+- **Backend**: Spring Boot
+- **Database**: MySQL
+- **AI**: RAG, FastAPI (팀 프로젝트 구성 요소)
+- **Cache**: Redis
+
+---
+
+## 🔧 실행 방법 (Local Setup)
+
+### 1. FastAPI 서버 실행
 
 ```bash
-docker --version
-
+py -3.10 -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
-만약 버전 정보가 뜬다면 이미 깔려있는 것, 그런 커맨드 없다고 하면 새로 설치해야함  
-Docker 설치 후에는 반드시 Docker Desktop을 실행한 상태여야 함  
 
+```bash
+python -m app.scripts.ingest_regulations
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-### 2. Redis 컨테이너 실행
-아래 명령어 한 줄만 실행하면 Redis가 로컬에서 실행됩니다.  
+👉 http://127.0.0.1:8000/docs
+
+---
+
+### 2. Redis 실행
+
 ```bash
 docker run -d --name local-redis -p 6379:6379 redis:7
 ```
-참고 설명 (이해하지 않아도 됩니다)  
-  
--d : 백그라운드 실행  
---name local-redis : 컨테이너 이름  
-6379 : Redis 기본 포트  
-redis:7 : Redis 버전 7  
 
+---
 
-### 3. Redis 실행 상태 확인
-아래 명령어를 실행합니다.  
-```bash
-docker ps
+## 🚀 개선 경험 (Problem → Solution)
 
-```
+### ❗ 문제
 
-아래와 비슷한 출력이 보이면 정상입니다.
-```
-CONTAINER ID   IMAGE     NAME          PORTS
-xxxxxx         redis:7   local-redis   0.0.0.0:6379->6379/tcp
-```
+* 키워드 기반 검색 → 낮은 정확도
+* 벡터 검색 도입 후 → 응답 속도 저하
 
-### 4. Redis 접속 테스트 (선택)
-Redis가 실제로 동작하는지 확인하고 싶다면 아래 명령어를 실행합니다.  
-```bash
-docker exec -it local-redis redis-cli
-```
-Redis 콘솔에서 다음을 입력합니다.  
-```bash
-PING
-```
-아래처럼 나오면 정상입니다.  
+### ✅ 해결
 
-```
-PONG
-```
-종료하려면:  
-``` bash
-exit
-```
+* 벡터 임베딩 기반 검색 구조로 개선
+* 입력 단계에서 금지 키워드 필터링 추가
+* 데이터 전처리 및 검색 범위 제한으로 성능 개선
 
-### 5. 애플리케이션에서 Redis 접속 정보
-애플리케이션에서는 아래 정보로 Redis에 접속하면 됩니다.  
-```bash
-HOST: localhost
-PORT: 6379
-PASSWORD: 없음
-```
-예시 환경 변수:  
-REDIS_HOST=localhost  
-REDIS_PORT=6379  
+---
 
-### 6. Redis 컨테이너 제어
+## 📈 결과
 
-Redis 중지  
-```bash
-docker stop local-redis
-```
+* 검색 정확도 향상
+* 응답 속도 개선
+* 안정적인 데이터 처리 구조 확보
 
-Redis 다시 시작  
-``` bash
-docker start local-redis
-```
+---
 
-Redis 컨테이너 삭제 (완전히 제거)  
-``` bash
-docker rm -f local-redis
-```
+## 📝 배운 점
 
-삭제 후 다시 실행하려면 2번 단계 명령어를 다시 실행하면 됩니다.  
-
-7. 자주 발생하는 문제
-포트 6379가 이미 사용 중이라는 오류가 나는 경우
-이미 다른 Redis나 서비스가 해당 포트를 사용 중일 수 있습니다.  
-이 경우 포트를 변경해서 실행합니다.  
-``` bash
-docker run -d \
-  --name local-redis \
-  -p 6380:6379 \
-  redis:7
-```
-
-이 경우 애플리케이션에서도 포트를 6380으로 맞춰야 합니다.  
-```
-REDIS_PORT=6380
-```
-
-
+* 단순 구현보다 **구조 설계가 성능과 품질에 큰 영향**을 미친다는 것을 체감
+* 문제 해결 시 다양한 접근을 비교하며 개선하는 과정의 중요성 학습
